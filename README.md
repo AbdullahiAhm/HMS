@@ -1,73 +1,102 @@
-# Welcome to your Lovable project
+# Hotel Management System (HMS)
 
-## Project info
+A web-based Hotel Management System built as a final semester project for the Bachelor of Business Information Technology (BBIT) course.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Author
 
-## How can I edit this code?
+**Zakaria Ahmed**
 
-There are several ways of editing your application.
+## Project Overview
 
-**Use Lovable**
+This system provides a comprehensive solution for managing hotel operations including:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Dashboard** – Real-time overview of hotel KPIs, occupancy, and revenue
+- **Room Management** – Add, edit, and track room status (available, occupied, reserved, cleaning, maintenance)
+- **Booking Management** – Create and manage guest reservations, check-ins, and check-outs
+- **Billing & Payments** – Generate bills, record payments via cash, card, or M-Pesa
+- **Customer Management** – Maintain guest profiles with VIP tracking
+- **Housekeeping** – Assign and track cleaning/maintenance tasks
+- **Reports & Analytics** – Revenue trends, occupancy rates, and room distribution charts
 
-Changes made via Lovable will be committed automatically to this repo.
+## Technology Stack
 
-**Use your preferred IDE**
+### Frontend
+- **React 18** with TypeScript
+- **Vite** – Build tool and dev server
+- **Tailwind CSS** – Utility-first CSS framework
+- **shadcn/ui** – Accessible component library (Radix UI primitives)
+- **Recharts** – Data visualization / charts
+- **React Router** – Client-side routing
+- **Lucide React** – Icon library
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Project Structure
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```
+├── public/                  # Static assets
+├── src/
+│   ├── components/          # Reusable UI components
+│   │   ├── ui/              # Base UI components (Button, Card, Dialog, etc.)
+│   │   └── Layout.tsx       # Main application layout with sidebar
+│   ├── data/
+│   │   └── mockData.ts      # Sample data for development/demo
+│   ├── pages/               # Route-level page components
+│   │   ├── Dashboard.tsx
+│   │   ├── Rooms.tsx
+│   │   ├── Bookings.tsx
+│   │   ├── Billing.tsx
+│   │   ├── Customers.tsx
+│   │   ├── Housekeeping.tsx
+│   │   └── Reports.tsx
+│   ├── types/
+│   │   └── hotel.ts         # TypeScript type definitions
+│   ├── lib/
+│   │   └── utils.ts         # Utility functions
+│   ├── App.tsx              # Root component with routing
+│   ├── main.tsx             # Application entry point
+│   └── index.css            # Global styles and design tokens
+├── package.json
+├── tailwind.config.ts
+├── vite.config.ts
+└── tsconfig.json
+```
 
-Follow these steps:
+## Getting Started
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Node.js (v18 or later)
+- npm or yarn
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd hotel-management-system
+
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Run Tests
 
-## What technologies are used for this project?
+```bash
+npm test
+```
 
-This project is built with:
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+This project is developed for academic purposes as part of the BBIT programme.

@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { rooms as initialRooms, roomTypes } from '@/data/mockData';
+import { useData } from '@/context/DataContext';
 import { Plus, Search, BedDouble, Edit, Trash2 } from 'lucide-react';
-import type { RoomStatus } from '@/types/hotel';
+import { toast } from 'sonner';
+import type { Room, RoomStatus } from '@/types/hotel';
 
 const statusColors: Record<RoomStatus, string> = {
   available: 'bg-success text-success-foreground',
@@ -20,18 +21,111 @@ const statusColors: Record<RoomStatus, string> = {
 };
 
 const Rooms = () => {
+  const { rooms, roomTypes, addRoom, updateRoom, deleteRoom } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [floorFilter, setFloorFilter] = useState<string>('all');
+  const [addOpen, setAddOpen] = useState(false);
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
 
-  const filteredRooms = initialRooms.filter((room) => {
+  // Add form state
+  const [formNumber, setFormNumber] = useState('');
+  const [formFloor, setFormFloor] = useState('');
+  const [formTypeId, setFormTypeId] = useState('');
+  const [formStatus, setFormStatus] = useState<RoomStatus>('available');
+  const [formNotes, setFormNotes] = useState('');
+
+  const resetForm = () => {
+    setFormNumber(''); setFormFloor(''); setFormTypeId(''); setFormStatus('available'); setFormNotes('');
+  };
+
+  const openEdit = (room: Room) => {
+    setEditRoom(room);
+    setFormNumber(room.room_number);
+    setFormFloor(room.floor.toString());
+    setFormTypeId(room.room_type_id.toString());
+    setFormStatus(room.status);
+    setFormNotes(room.notes || '');
+  };
+
+  const handleAdd = () => {
+    if (!formNumber || !formFloor || !formTypeId) { toast.error('Please fill all required fields'); return; }
+    const rt = roomTypes.find(t => t.id.toString() === formTypeId)!;
+    addRoom({
+      room_number: formNumber,
+      room_type_id: rt.id,
+      room_type: rt,
+      floor: parseInt(formFloor),
+      status: 'available',
+      notes: formNotes || undefined,
+    });
+    toast.success(`Room ${formNumber} added successfully`);
+    resetForm();
+    setAddOpen(false);
+  };
+
+  const handleUpdate = () => {
+    if (!editRoom) return;
+    const rt = roomTypes.find(t => t.id.toString() === formTypeId)!;
+    updateRoom(editRoom.id, {
+      room_number: formNumber,
+      room_type_id: rt.id,
+      room_type: rt,
+      floor: parseInt(formFloor),
+      status: formStatus,
+      notes: formNotes || undefined,
+    });
+    toast.success(`Room ${formNumber} updated`);
+    setEditRoom(null);
+    resetForm();
+  };
+
+  const handleDelete = (room: Room) => {
+    if (room.status === 'occupied') { toast.error('Cannot delete an occupied room'); return; }
+    deleteRoom(room.id);
+    toast.success(`Room ${room.room_number} deleted`);
+  };
+
+  const filteredRooms = rooms.filter((room) => {
     const matchesSearch = room.room_number.includes(searchTerm) || room.room_type.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || room.status === statusFilter;
     const matchesFloor = floorFilter === 'all' || room.floor.toString() === floorFilter;
     return matchesSearch && matchesStatus && matchesFloor;
   });
 
-  const floors = [...new Set(initialRooms.map(r => r.floor))].sort();
+  const floors = [...new Set(rooms.map(r => r.floor))].sort();
+
+  const RoomForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
+    <div className="space-y-4 pt-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div><Label>Room Number</Label><Input placeholder="e.g. 501" value={formNumber} onChange={e => setFormNumber(e.target.value)} /></div>
+        <div><Label>Floor</Label><Input type="number" placeholder="e.g. 5" value={formFloor} onChange={e => setFormFloor(e.target.value)} /></div>
+      </div>
+      <div><Label>Room Type</Label>
+        <Select value={formTypeId} onValueChange={setFormTypeId}>
+          <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+          <SelectContent>{roomTypes.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name} - KES {t.base_rate.toLocaleString()}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      {editRoom && (
+        <div><Label>Status</Label>
+          <Select value={formStatus} onValueChange={(v) => setFormStatus(v as RoomStatus)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="occupied">Occupied</SelectItem>
+              <SelectItem value="reserved">Reserved</SelectItem>
+              <SelectItem value="cleaning">Cleaning</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+              <SelectItem value="out_of_service">Out of Service</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div><Label>Notes</Label><Input placeholder="Any special notes..." value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={onSubmit}>{submitLabel}</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -40,33 +134,26 @@ const Rooms = () => {
           <h1 className="text-2xl font-bold">Room Management</h1>
           <p className="text-muted-foreground">Manage all hotel rooms and their status</p>
         </div>
-        <Dialog>
+        <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
               <Plus className="h-4 w-4 mr-2" /> Add Room
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Room</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Room Number</Label><Input placeholder="e.g. 501" /></div>
-                <div><Label>Floor</Label><Input type="number" placeholder="e.g. 5" /></div>
-              </div>
-              <div><Label>Room Type</Label>
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                  <SelectContent>{roomTypes.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name} - KES {t.base_rate.toLocaleString()}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Notes</Label><Input placeholder="Any special notes..." /></div>
-              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">Create Room</Button>
-            </div>
+            <DialogHeader><DialogTitle>Add New Room</DialogTitle></DialogHeader>
+            <RoomForm onSubmit={handleAdd} submitLabel="Create Room" />
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editRoom} onOpenChange={(o) => { if (!o) { setEditRoom(null); resetForm(); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Room {editRoom?.room_number}</DialogTitle></DialogHeader>
+          <RoomForm onSubmit={handleUpdate} submitLabel="Save Changes" />
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card>
@@ -101,8 +188,8 @@ const Rooms = () => {
       {/* Room Type Summary */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
         {roomTypes.map((type) => {
-          const count = initialRooms.filter(r => r.room_type_id === type.id).length;
-          const available = initialRooms.filter(r => r.room_type_id === type.id && r.status === 'available').length;
+          const count = rooms.filter(r => r.room_type_id === type.id).length;
+          const available = rooms.filter(r => r.room_type_id === type.id && r.status === 'available').length;
           return (
             <Card key={type.id}>
               <CardContent className="p-4 text-center">
@@ -145,8 +232,8 @@ const Rooms = () => {
                 )}
               </div>
               <div className="flex gap-2 mt-4">
-                <Button variant="outline" size="sm" className="flex-1"><Edit className="h-3 w-3 mr-1" />Edit</Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive hover:text-destructive-foreground"><Trash2 className="h-3 w-3" /></Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(room)}><Edit className="h-3 w-3 mr-1" />Edit</Button>
+                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleDelete(room)}><Trash2 className="h-3 w-3" /></Button>
               </div>
             </CardContent>
           </Card>

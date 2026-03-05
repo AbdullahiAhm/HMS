@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { bookings, rooms, customers } from '@/data/mockData';
-import { Plus, Search, CalendarCheck, LogIn, LogOut, Eye } from 'lucide-react';
+import { useData } from '@/context/DataContext';
+import { Plus, Search, LogIn, LogOut, Eye, X, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { BookingStatus } from '@/types/hotel';
 
 const statusStyles: Record<BookingStatus, string> = {
@@ -18,8 +19,42 @@ const statusStyles: Record<BookingStatus, string> = {
 };
 
 const Bookings = () => {
+  const { bookings, rooms, customers, addBooking, updateBookingStatus, deleteBooking } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [addOpen, setAddOpen] = useState(false);
+
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [formRoomId, setFormRoomId] = useState('');
+  const [formCheckIn, setFormCheckIn] = useState('');
+  const [formCheckOut, setFormCheckOut] = useState('');
+  const [formAdults, setFormAdults] = useState('1');
+  const [formChildren, setFormChildren] = useState('0');
+  const [formRequests, setFormRequests] = useState('');
+
+  const resetForm = () => { setFormCustomerId(''); setFormRoomId(''); setFormCheckIn(''); setFormCheckOut(''); setFormAdults('1'); setFormChildren('0'); setFormRequests(''); };
+
+  const handleAdd = () => {
+    if (!formCustomerId || !formRoomId || !formCheckIn || !formCheckOut) { toast.error('Please fill all required fields'); return; }
+    const customer = customers.find(c => c.id.toString() === formCustomerId)!;
+    const room = rooms.find(r => r.id.toString() === formRoomId)!;
+    const nights = Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / (1000 * 60 * 60 * 24)));
+    addBooking({
+      customer, room,
+      check_in_date: formCheckIn, check_out_date: formCheckOut,
+      status: 'confirmed',
+      adults: parseInt(formAdults), children: parseInt(formChildren),
+      special_requests: formRequests || undefined,
+      total_amount: room.room_type.base_rate * nights,
+    });
+    toast.success('Booking created successfully');
+    resetForm(); setAddOpen(false);
+  };
+
+  const handleCheckIn = (id: number) => { updateBookingStatus(id, 'checked_in'); toast.success('Guest checked in'); };
+  const handleCheckOut = (id: number) => { updateBookingStatus(id, 'checked_out'); toast.success('Guest checked out'); };
+  const handleCancel = (id: number) => { updateBookingStatus(id, 'cancelled'); toast.success('Booking cancelled'); };
+  const handleDelete = (id: number) => { deleteBooking(id); toast.success('Booking deleted'); };
 
   const filteredBookings = bookings.filter((b) => {
     const guestName = `${b.customer.first_name} ${b.customer.last_name}`.toLowerCase();
@@ -28,6 +63,8 @@ const Bookings = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const availableRooms = rooms.filter(r => r.status === 'available');
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -35,7 +72,7 @@ const Bookings = () => {
           <h1 className="text-2xl font-bold">Booking Management</h1>
           <p className="text-muted-foreground">Manage reservations, check-ins, and check-outs</p>
         </div>
-        <Dialog>
+        <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
               <Plus className="h-4 w-4 mr-2" /> New Booking
@@ -46,28 +83,28 @@ const Bookings = () => {
             <div className="space-y-4 pt-4">
               <div>
                 <Label>Guest</Label>
-                <Select>
+                <Select value={formCustomerId} onValueChange={setFormCustomerId}>
                   <SelectTrigger><SelectValue placeholder="Select guest" /></SelectTrigger>
                   <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Room</Label>
-                <Select>
+                <Select value={formRoomId} onValueChange={setFormRoomId}>
                   <SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger>
-                  <SelectContent>{rooms.filter(r => r.status === 'available').map(r => <SelectItem key={r.id} value={r.id.toString()}>Room {r.room_number} - {r.room_type.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableRooms.map(r => <SelectItem key={r.id} value={r.id.toString()}>Room {r.room_number} - {r.room_type.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>Check-in Date</Label><Input type="date" /></div>
-                <div><Label>Check-out Date</Label><Input type="date" /></div>
+                <div><Label>Check-in Date</Label><Input type="date" value={formCheckIn} onChange={e => setFormCheckIn(e.target.value)} /></div>
+                <div><Label>Check-out Date</Label><Input type="date" value={formCheckOut} onChange={e => setFormCheckOut(e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>Adults</Label><Input type="number" defaultValue={1} min={1} /></div>
-                <div><Label>Children</Label><Input type="number" defaultValue={0} min={0} /></div>
+                <div><Label>Adults</Label><Input type="number" value={formAdults} onChange={e => setFormAdults(e.target.value)} min={1} /></div>
+                <div><Label>Children</Label><Input type="number" value={formChildren} onChange={e => setFormChildren(e.target.value)} min={0} /></div>
               </div>
-              <div><Label>Special Requests</Label><Input placeholder="Any special requests..." /></div>
-              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">Create Booking</Button>
+              <div><Label>Special Requests</Label><Input placeholder="Any special requests..." value={formRequests} onChange={e => setFormRequests(e.target.value)} /></div>
+              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleAdd}>Create Booking</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -81,12 +118,7 @@ const Bookings = () => {
           { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length, color: 'text-info' },
           { label: 'Checked Out', value: bookings.filter(b => b.status === 'checked_out').length, color: 'text-muted-foreground' },
         ].map(s => (
-          <Card key={s.label}>
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-            </CardContent>
-          </Card>
+          <Card key={s.label}><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">{s.label}</p><p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p></CardContent></Card>
         ))}
       </div>
 
@@ -146,12 +178,17 @@ const Bookings = () => {
                     <td className="p-4 font-medium">KES {booking.total_amount.toLocaleString()}</td>
                     <td className="p-4">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="View"><Eye className="h-4 w-4" /></Button>
                         {booking.status === 'confirmed' && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-success" title="Check In"><LogIn className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-success" title="Check In" onClick={() => handleCheckIn(booking.id)}><LogIn className="h-4 w-4" /></Button>
                         )}
                         {booking.status === 'checked_in' && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-info" title="Check Out"><LogOut className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-info" title="Check Out" onClick={() => handleCheckOut(booking.id)}><LogOut className="h-4 w-4" /></Button>
+                        )}
+                        {(booking.status === 'confirmed') && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" title="Cancel" onClick={() => handleCancel(booking.id)}><X className="h-4 w-4" /></Button>
+                        )}
+                        {(booking.status === 'checked_out' || booking.status === 'cancelled') && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Delete" onClick={() => handleDelete(booking.id)}><Trash2 className="h-4 w-4" /></Button>
                         )}
                       </div>
                     </td>

@@ -1,7 +1,8 @@
 import { BedDouble, CalendarCheck, DollarSign, Users, TrendingUp, ArrowUpRight, ArrowDownRight, Brush } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { dashboardStats, rooms, bookings, revenueData, occupancyData } from '@/data/mockData';
+import { revenueData, occupancyData } from '@/data/mockData';
+import { useData } from '@/context/DataContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import type { RoomStatus } from '@/types/hotel';
 
@@ -23,14 +24,23 @@ const statusLabels: Record<RoomStatus, string> = {
   out_of_service: 'Out of Service',
 };
 
-const kpiCards = [
-  { title: 'Occupancy Rate', value: `${dashboardStats.occupancy_rate}%`, icon: TrendingUp, change: '+5.2%', positive: true, color: 'text-secondary' },
-  { title: 'Total Revenue', value: `KES ${(dashboardStats.total_revenue).toLocaleString()}`, icon: DollarSign, change: '+12.3%', positive: true, color: 'text-success' },
-  { title: 'Active Bookings', value: dashboardStats.active_bookings.toString(), icon: CalendarCheck, change: '+2', positive: true, color: 'text-info' },
-  { title: 'Available Rooms', value: `${dashboardStats.available_rooms}/${dashboardStats.total_rooms}`, icon: BedDouble, change: '-1', positive: false, color: 'text-warning' },
-];
-
 const Dashboard = () => {
+  const { rooms, bookings, housekeepingTasks, bills } = useData();
+
+  const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
+  const availableRooms = rooms.filter(r => r.status === 'available').length;
+  const occupancyRate = rooms.length > 0 ? Math.round((occupiedRooms / rooms.length) * 100) : 0;
+  const totalRevenue = bills.reduce((s, b) => s + b.total, 0);
+  const activeBookings = bookings.filter(b => b.status === 'checked_in' || b.status === 'confirmed').length;
+  const pendingHousekeeping = housekeepingTasks.filter(t => t.status !== 'completed').length;
+
+  const kpiCards = [
+    { title: 'Occupancy Rate', value: `${occupancyRate}%`, icon: TrendingUp, change: '+5.2%', positive: true, color: 'text-secondary' },
+    { title: 'Total Revenue', value: `KES ${totalRevenue.toLocaleString()}`, icon: DollarSign, change: '+12.3%', positive: true, color: 'text-success' },
+    { title: 'Active Bookings', value: activeBookings.toString(), icon: CalendarCheck, change: '+2', positive: true, color: 'text-info' },
+    { title: 'Available Rooms', value: `${availableRooms}/${rooms.length}`, icon: BedDouble, change: '-1', positive: false, color: 'text-warning' },
+  ];
+
   const recentBookings = bookings.filter(b => b.status === 'checked_in' || b.status === 'confirmed').slice(0, 5);
 
   return (
@@ -108,28 +118,28 @@ const Dashboard = () => {
                 <CalendarCheck className="h-5 w-5 text-success" />
                 <span className="text-sm font-medium">Check-ins</span>
               </div>
-              <span className="text-xl font-bold">{dashboardStats.todays_checkins}</span>
+              <span className="text-xl font-bold">{bookings.filter(b => b.status === 'checked_in').length}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
                 <CalendarCheck className="h-5 w-5 text-info" />
                 <span className="text-sm font-medium">Check-outs</span>
               </div>
-              <span className="text-xl font-bold">{dashboardStats.todays_checkouts}</span>
+              <span className="text-xl font-bold">{bookings.filter(b => b.status === 'checked_out').length}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
                 <Brush className="h-5 w-5 text-warning" />
                 <span className="text-sm font-medium">Housekeeping</span>
               </div>
-              <span className="text-xl font-bold">{dashboardStats.pending_housekeeping}</span>
+              <span className="text-xl font-bold">{pendingHousekeeping}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
                 <Users className="h-5 w-5 text-secondary" />
                 <span className="text-sm font-medium">Total Guests</span>
               </div>
-              <span className="text-xl font-bold">{dashboardStats.occupied_rooms * 2}</span>
+              <span className="text-xl font-bold">{occupiedRooms * 2}</span>
             </div>
           </CardContent>
         </Card>

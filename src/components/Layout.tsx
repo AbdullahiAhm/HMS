@@ -19,6 +19,7 @@ const navItems = [
 ];
 
 const Layout = () => {
+  const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -18,6 +19,7 @@ const navItems = [
 ];
 
 const Layout = () => {
+  const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -67,13 +69,13 @@ const Layout = () => {
           <div className="border-t border-sidebar-border px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-bold">
-                ZA
+                {user?.email?.[0]?.toUpperCase() || 'A'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">Zakaria Ahmed</p>
-                <p className="text-xs text-sidebar-foreground/60">Admin</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.email || 'Admin'}</p>
+                <p className="text-xs text-sidebar-foreground/60">Administrator</p>
               </div>
-              <button className="text-sidebar-foreground/60 hover:text-sidebar-foreground">
+              <button className="text-sidebar-foreground/60 hover:text-sidebar-foreground" onClick={signOut} title="Sign Out">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>

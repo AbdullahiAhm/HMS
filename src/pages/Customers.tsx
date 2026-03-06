@@ -51,7 +51,7 @@ const Customers = () => {
 
   const setField = (key: string, value: string | boolean) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const CustomerForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
+  const renderForm = (onSubmit: () => void, submitLabel: string) => (
     <div className="space-y-4 pt-4">
       <div className="grid grid-cols-2 gap-4">
         <div><Label>First Name</Label><Input placeholder="First name" value={form.first_name} onChange={e => setField('first_name', e.target.value)} /></div>
@@ -92,7 +92,7 @@ const Customers = () => {
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Add New Customer</DialogTitle></DialogHeader>
-            <CustomerForm onSubmit={handleAdd} submitLabel="Add Customer" />
+            {renderForm(handleAdd, "Add Customer")}
           </DialogContent>
         </Dialog>
       </div>
@@ -101,7 +101,7 @@ const Customers = () => {
       <Dialog open={!!editCustomer} onOpenChange={(o) => { if (!o) { setEditCustomer(null); resetForm(); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Edit Customer</DialogTitle></DialogHeader>
-          <CustomerForm onSubmit={handleUpdate} submitLabel="Save Changes" />
+          {renderForm(handleUpdate, "Save Changes")}
         </DialogContent>
       </Dialog>
 

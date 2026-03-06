@@ -95,7 +95,7 @@ const Rooms = () => {
 
   const floors = [...new Set(rooms.map(r => r.floor))].sort();
 
-  const RoomForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
+  const renderRoomForm = (onSubmit: () => void, submitLabel: string) => (
     <div className="space-y-4 pt-4">
       <div className="grid grid-cols-2 gap-4">
         <div><Label>Room Number</Label><Input placeholder="e.g. 501" value={formNumber} onChange={e => setFormNumber(e.target.value)} /></div>
@@ -142,7 +142,7 @@ const Rooms = () => {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add New Room</DialogTitle></DialogHeader>
-            <RoomForm onSubmit={handleAdd} submitLabel="Create Room" />
+            {renderRoomForm(handleAdd, "Create Room")}
           </DialogContent>
         </Dialog>
       </div>
@@ -151,7 +151,7 @@ const Rooms = () => {
       <Dialog open={!!editRoom} onOpenChange={(o) => { if (!o) { setEditRoom(null); resetForm(); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Room {editRoom?.room_number}</DialogTitle></DialogHeader>
-          <RoomForm onSubmit={handleUpdate} submitLabel="Save Changes" />
+          {renderRoomForm(handleUpdate, "Save Changes")}
         </DialogContent>
       </Dialog>
 

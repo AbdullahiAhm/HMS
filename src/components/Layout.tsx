@@ -33,8 +33,8 @@ const Layout = () => {
           <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
             <Hotel className="h-8 w-8 text-sidebar-primary" />
             <div>
-              <h1 className="text-lg font-bold text-sidebar-foreground">HMS</h1>
-              <p className="text-xs text-sidebar-foreground/60">Hotel Management</p>
+              <h1 className="text-lg font-bold text-sidebar-foreground">BAM HMS</h1>
+              <p className="text-xs text-sidebar-foreground/60">Hotel Management System</p>
             </div>
             <button className="ml-auto lg:hidden text-sidebar-foreground" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />

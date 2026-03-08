@@ -13,6 +13,7 @@ import Customers from "./pages/Customers";
 import Housekeeping from "./pages/Housekeeping";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={user && isAdmin ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
   );

@@ -25,6 +25,7 @@ interface DataContextType {
   // Bills & Payments
   bills: Bill[];
   payments: Payment[];
+  addBill: (bill: Omit<Bill, 'id' | 'created_at'>) => void;
   addPayment: (payment: Omit<Payment, 'id' | 'created_at'>) => void;
 
   // Housekeeping

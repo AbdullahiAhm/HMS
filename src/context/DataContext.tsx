@@ -96,6 +96,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBookings(prev => prev.filter(b => b.id !== id));
   }, []);
 
+  // Bill
+  const addBill = useCallback((bill: Omit<Bill, 'id' | 'created_at'>) => {
+    setBills(prev => [...prev, { ...bill, id: genId(), created_at: new Date().toISOString().split('T')[0] }]);
+  }, []);
+
   // Payment
   const addPayment = useCallback((payment: Omit<Payment, 'id' | 'created_at'>) => {
     const newPayment = { ...payment, id: genId(), created_at: new Date().toISOString().split('T')[0] };

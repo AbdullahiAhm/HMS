@@ -7,34 +7,83 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useData } from '@/context/DataContext';
-import { Receipt, DollarSign, CreditCard, Eye, Printer, Plus } from 'lucide-react';
+import { Receipt, DollarSign, CreditCard, Eye, Printer, Plus, FilePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PaymentMethod } from '@/types/hotel';
 
 const Billing = () => {
-  const { bills, payments, addPayment } = useData();
+  const { bills, payments, addPayment, bookings, addBill } = useData();
   const [addOpen, setAddOpen] = useState(false);
   const [viewBillId, setViewBillId] = useState<number | null>(null);
+  const [creatingBill, setCreatingBill] = useState(false);
 
   const [formBillId, setFormBillId] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formMethod, setFormMethod] = useState<PaymentMethod>('cash');
   const [formRef, setFormRef] = useState('');
 
-  const resetForm = () => { setFormBillId(''); setFormAmount(''); setFormMethod('cash'); setFormRef(''); };
+  // New bill inline form
+  const [newBillBookingId, setNewBillBookingId] = useState('');
+  const [newBillItems, setNewBillItems] = useState([{ description: '', quantity: '1', unit_price: '', category: 'room' }]);
+
+  const resetForm = () => {
+    setFormBillId(''); setFormAmount(''); setFormMethod('cash'); setFormRef('');
+    setCreatingBill(false);
+    setNewBillBookingId('');
+    setNewBillItems([{ description: '', quantity: '1', unit_price: '', category: 'room' }]);
+  };
 
   const totalRevenue = bills.reduce((sum, b) => sum + b.total, 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalOutstanding = totalRevenue - totalPaid;
 
+  const handleAddBillItem = () => {
+    setNewBillItems(prev => [...prev, { description: '', quantity: '1', unit_price: '', category: 'room' }]);
+  };
+
+  const handleRemoveBillItem = (index: number) => {
+    setNewBillItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreateBillAndSelect = () => {
+    if (!newBillBookingId) { toast.error('Please select a booking'); return; }
+    const validItems = newBillItems.filter(i => i.description && i.unit_price);
+    if (validItems.length === 0) { toast.error('Add at least one bill item'); return; }
+
+    const booking = bookings.find(b => b.id.toString() === newBillBookingId);
+    if (!booking) { toast.error('Invalid booking'); return; }
+
+    const items = validItems.map((item, idx) => {
+      const qty = parseInt(item.quantity) || 1;
+      const price = parseFloat(item.unit_price) || 0;
+      return { id: idx + 1, description: item.description, quantity: qty, unit_price: price, total: qty * price, category: item.category };
+    });
+
+    const subtotal = items.reduce((s, i) => s + i.total, 0);
+    const tax = Math.round(subtotal * 0.16);
+    const total = subtotal + tax;
+
+    addBill({ booking, items, subtotal, tax, total, status: 'open' });
+    toast.success('Bill created successfully');
+    setCreatingBill(false);
+    setFormBillId('__newest__');
+  };
+
   const handleAddPayment = () => {
-    if (!formBillId || !formAmount) { toast.error('Please fill required fields'); return; }
-    addPayment({ bill_id: parseInt(formBillId), amount: parseFloat(formAmount), method: formMethod, reference: formRef || undefined });
+    let billId = formBillId;
+    if (billId === '__newest__') {
+      billId = bills[bills.length - 1]?.id.toString() || '';
+    }
+    if (!billId || !formAmount) { toast.error('Please fill required fields'); return; }
+    addPayment({ bill_id: parseInt(billId), amount: parseFloat(formAmount), method: formMethod, reference: formRef || undefined });
     toast.success('Payment recorded');
     resetForm(); setAddOpen(false);
   };
 
   const viewBill = bills.find(b => b.id === viewBillId);
+
+  // Bookings that don't already have a bill
+  const bookingsWithoutBill = bookings.filter(b => !bills.some(bill => bill.booking.id === b.id));
 
   return (
     <div className="space-y-6">
@@ -49,15 +98,96 @@ const Billing = () => {
               <Plus className="h-4 w-4 mr-2" /> Record Payment
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-4">
+              {/* Bill Selection or Creation */}
               <div>
-                <Label>Bill</Label>
-                <Select value={formBillId} onValueChange={setFormBillId}>
-                  <SelectTrigger><SelectValue placeholder="Select bill" /></SelectTrigger>
-                  <SelectContent>{bills.filter(b => b.status !== 'paid').map(b => <SelectItem key={b.id} value={b.id.toString()}>Bill #{b.id} - {b.booking.customer.first_name} {b.booking.customer.last_name} (KES {b.total.toLocaleString()})</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Bill</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-secondary"
+                    onClick={() => setCreatingBill(!creatingBill)}
+                  >
+                    {creatingBill ? (
+                      <><span className="mr-1">✕</span> Cancel</>
+                    ) : (
+                      <><FilePlus className="h-3 w-3 mr-1" /> New Bill</>
+                    )}
+                  </Button>
+                </div>
+                {creatingBill ? (
+                  <div className="space-y-3 rounded-md border border-border p-3 bg-muted/30">
+                    <div>
+                      <Label className="text-xs">Booking *</Label>
+                      <Select value={newBillBookingId} onValueChange={setNewBillBookingId}>
+                        <SelectTrigger><SelectValue placeholder="Select booking" /></SelectTrigger>
+                        <SelectContent>
+                          {bookingsWithoutBill.map(b => (
+                            <SelectItem key={b.id} value={b.id.toString()}>
+                              #{b.id} - {b.customer.first_name} {b.customer.last_name} (Room {b.room.room_number})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Bill Items</Label>
+                      {newBillItems.map((item, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                          <div className="col-span-5">
+                            <Input
+                              placeholder="Description"
+                              value={item.description}
+                              onChange={e => setNewBillItems(prev => prev.map((it, i) => i === idx ? { ...it, description: e.target.value } : it))}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              placeholder="Qty"
+                              min={1}
+                              value={item.quantity}
+                              onChange={e => setNewBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: e.target.value } : it))}
+                            />
+                          </div>
+                          <div className="col-span-4">
+                            <Input
+                              type="number"
+                              placeholder="Price"
+                              value={item.unit_price}
+                              onChange={e => setNewBillItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: e.target.value } : it))}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            {newBillItems.length > 1 && (
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveBillItem(idx)}>✕</Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleAddBillItem}>
+                        <Plus className="h-3 w-3 mr-1" /> Add Item
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                      onClick={handleCreateBillAndSelect}
+                    >
+                      <FilePlus className="h-3.5 w-3.5 mr-1.5" /> Create Bill & Select
+                    </Button>
+                  </div>
+                ) : (
+                  <Select value={formBillId} onValueChange={setFormBillId}>
+                    <SelectTrigger><SelectValue placeholder="Select bill" /></SelectTrigger>
+                    <SelectContent>{bills.filter(b => b.status !== 'paid').map(b => <SelectItem key={b.id} value={b.id.toString()}>Bill #{b.id} - {b.booking.customer.first_name} {b.booking.customer.last_name} (KES {b.total.toLocaleString()})</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
               <div><Label>Amount (KES)</Label><Input type="number" placeholder="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} /></div>
               <div>

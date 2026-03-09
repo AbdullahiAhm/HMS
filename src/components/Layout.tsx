@@ -16,6 +16,7 @@ const navItems = [
   { to: '/customers', icon: Users, label: 'Customers' },
   { to: '/housekeeping', icon: Brush, label: 'Housekeeping' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
+  { to: '/change-password', icon: KeyRound, label: 'Change Password' },
 ];
 
 const Layout = () => {

@@ -48,6 +48,7 @@ const ProtectedRoutes = () => {
           <Route path="/customers" element={<Customers />} />
           <Route path="/housekeeping" element={<Housekeeping />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/change-password" element={<ChangePassword />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

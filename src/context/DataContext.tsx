@@ -129,7 +129,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       rooms, addRoom, updateRoom, deleteRoom, roomTypes,
       customers, addCustomer, updateCustomer, deleteCustomer,
       bookings, addBooking, updateBookingStatus, deleteBooking,
-      bills, payments, addPayment,
+      bills, payments, addBill, addPayment,
       housekeepingTasks, addTask, updateTaskStatus, deleteTask,
     }}>
       {children}

@@ -27,37 +27,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const checkAdmin = async (userId: string) => {
-    const { data } = await supabase.rpc('has_role', {
-      _user_id: userId,
-      _role: 'admin',
-    });
-    setIsAdmin(!!data);
+    try {
+      const roleCheck = supabase.rpc('has_role', {
+        _user_id: userId,
+        _role: 'admin',
+      });
+
+      const timeout = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 4000)
+      );
+
+      const result = await Promise.race([roleCheck, timeout]);
+
+      if (!result || !('data' in result)) {
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(!!result.data);
+    } catch {
+      setIsAdmin(false);
+    }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    let mounted = true;
+
+    const hydrateSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
-          await checkAdmin(session.user.id);
+          void checkAdmin(session.user.id);
         } else {
           setIsAdmin(false);
         }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          void checkAdmin(session.user.id);
+        } else {
+          setIsAdmin(false);
+        }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        checkAdmin(session.user.id);
-      }
-      setLoading(false);
-    });
+    void hydrateSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

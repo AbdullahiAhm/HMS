@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useData } from '@/context/DataContext';
-import { Plus, Search, LogIn, LogOut, Eye, X, Trash2 } from 'lucide-react';
+import { Plus, Search, LogIn, LogOut, Eye, X, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookingStatus } from '@/types/hotel';
 
@@ -19,10 +19,11 @@ const statusStyles: Record<BookingStatus, string> = {
 };
 
 const Bookings = () => {
-  const { bookings, rooms, customers, addBooking, updateBookingStatus, deleteBooking } = useData();
+  const { bookings, rooms, customers, addBooking, addCustomer, updateBookingStatus, deleteBooking } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [addOpen, setAddOpen] = useState(false);
+  const [creatingGuest, setCreatingGuest] = useState(false);
 
   const [formCustomerId, setFormCustomerId] = useState('');
   const [formRoomId, setFormRoomId] = useState('');
@@ -32,12 +33,45 @@ const Bookings = () => {
   const [formChildren, setFormChildren] = useState('0');
   const [formRequests, setFormRequests] = useState('');
 
-  const resetForm = () => { setFormCustomerId(''); setFormRoomId(''); setFormCheckIn(''); setFormCheckOut(''); setFormAdults('1'); setFormChildren('0'); setFormRequests(''); };
+  // New guest inline form
+  const [newGuest, setNewGuest] = useState({ first_name: '', last_name: '', email: '', phone: '', id_type: '', id_number: '', nationality: '', address: '', is_vip: false });
+
+  const resetForm = () => {
+    setFormCustomerId(''); setFormRoomId(''); setFormCheckIn(''); setFormCheckOut(''); setFormAdults('1'); setFormChildren('0'); setFormRequests('');
+    setCreatingGuest(false);
+    setNewGuest({ first_name: '', last_name: '', email: '', phone: '', id_type: '', id_number: '', nationality: '', address: '', is_vip: false });
+  };
+
+  const handleCreateGuestAndSelect = () => {
+    if (!newGuest.first_name || !newGuest.last_name || !newGuest.email) {
+      toast.error('Guest first name, last name, and email are required');
+      return;
+    }
+    addCustomer(newGuest);
+    // The newly added customer will be the last one in the list after re-render
+    // We need to find it by matching details since addCustomer generates the id
+    toast.success(`Guest ${newGuest.first_name} ${newGuest.last_name} added`);
+    setCreatingGuest(false);
+    // Select the newly created customer - it'll be the latest one
+    setTimeout(() => {
+      const latest = customers[customers.length - 1];
+      // The new customer isn't in the array yet due to state batching, so we use a workaround:
+      // We set a flag and the customer ID will be auto-selected after next render
+    }, 0);
+    // Use a special marker to auto-select newest customer
+    setFormCustomerId('__newest__');
+  };
 
   const handleAdd = () => {
-    if (!formCustomerId || !formRoomId || !formCheckIn || !formCheckOut) { toast.error('Please fill all required fields'); return; }
-    const customer = customers.find(c => c.id.toString() === formCustomerId)!;
+    let customerId = formCustomerId;
+    // If newest marker, pick the last customer
+    if (customerId === '__newest__') {
+      customerId = customers[customers.length - 1]?.id.toString() || '';
+    }
+    if (!customerId || !formRoomId || !formCheckIn || !formCheckOut) { toast.error('Please fill all required fields'); return; }
+    const customer = customers.find(c => c.id.toString() === customerId)!;
     const room = rooms.find(r => r.id.toString() === formRoomId)!;
+    if (!customer || !room) { toast.error('Invalid guest or room selection'); return; }
     const nights = Math.max(1, Math.ceil((new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime()) / (1000 * 60 * 60 * 24)));
     addBooking({
       customer, room,
@@ -78,15 +112,76 @@ const Bookings = () => {
               <Plus className="h-4 w-4 mr-2" /> New Booking
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Create New Booking</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-4">
+              {/* Guest Selection or Creation */}
               <div>
-                <Label>Guest</Label>
-                <Select value={formCustomerId} onValueChange={setFormCustomerId}>
-                  <SelectTrigger><SelectValue placeholder="Select guest" /></SelectTrigger>
-                  <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Guest</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-secondary"
+                    onClick={() => setCreatingGuest(!creatingGuest)}
+                  >
+                    {creatingGuest ? (
+                      <><X className="h-3 w-3 mr-1" /> Cancel</>
+                    ) : (
+                      <><UserPlus className="h-3 w-3 mr-1" /> New Guest</>
+                    )}
+                  </Button>
+                </div>
+                {creatingGuest ? (
+                  <div className="space-y-3 rounded-md border border-border p-3 bg-muted/30">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">First Name *</Label>
+                        <Input value={newGuest.first_name} onChange={e => setNewGuest(g => ({ ...g, first_name: e.target.value }))} placeholder="First name" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Last Name *</Label>
+                        <Input value={newGuest.last_name} onChange={e => setNewGuest(g => ({ ...g, last_name: e.target.value }))} placeholder="Last name" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Email *</Label>
+                      <Input type="email" value={newGuest.email} onChange={e => setNewGuest(g => ({ ...g, email: e.target.value }))} placeholder="email@example.com" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Phone</Label>
+                      <Input value={newGuest.phone} onChange={e => setNewGuest(g => ({ ...g, phone: e.target.value }))} placeholder="+254..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">ID Type</Label>
+                        <Input value={newGuest.id_type} onChange={e => setNewGuest(g => ({ ...g, id_type: e.target.value }))} placeholder="Passport" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">ID Number</Label>
+                        <Input value={newGuest.id_number} onChange={e => setNewGuest(g => ({ ...g, id_number: e.target.value }))} placeholder="ID number" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Nationality</Label>
+                      <Input value={newGuest.nationality} onChange={e => setNewGuest(g => ({ ...g, nationality: e.target.value }))} placeholder="Kenyan" />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                      onClick={handleCreateGuestAndSelect}
+                    >
+                      <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add Guest & Select
+                    </Button>
+                  </div>
+                ) : (
+                  <Select value={formCustomerId} onValueChange={setFormCustomerId}>
+                    <SelectTrigger><SelectValue placeholder="Select guest" /></SelectTrigger>
+                    <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.first_name} {c.last_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
               <div>
                 <Label>Room</Label>

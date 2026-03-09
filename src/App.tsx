@@ -14,6 +14,7 @@ import Housekeeping from "./pages/Housekeeping";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
